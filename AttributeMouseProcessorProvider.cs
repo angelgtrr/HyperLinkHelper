@@ -1,8 +1,8 @@
 ﻿using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
-using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using System.Windows.Input;
 
 namespace HyperLinkHelper
@@ -23,14 +23,6 @@ namespace HyperLinkHelper
     {
         private readonly IWpfTextView view;
 
-        // Mapping table: attribute → URL
-        private readonly Dictionary<string, string> attributeLinks = new Dictionary<string, string>
-        {
-            { "[Obsolete]", "https://learn.microsoft.com/dotnet/csharp/language-reference/attributes/obsolete" },
-            { "[ApiEndpoint]", "https://docs.myapi.com" },
-            { "[MyAttribute]", "https://your-url-here.com" }
-        };
-
         public AttributeMouseProcessor(IWpfTextView view)
         {
             this.view = view;
@@ -45,17 +37,37 @@ namespace HyperLinkHelper
                 var line = caretPos.GetContainingLine();
                 string text = line.GetText();
 
-                foreach (var kvp in attributeLinks)
+                // Regex to capture TestID(number)
+                var match = Regex.Match(text, @"TestID\((\d+)\)");
+                if (match.Success)
                 {
-                    if (text.Contains(kvp.Key))
+                    string id = match.Groups[1].Value; // e.g. "100"
+                    string url = $"https://sdiqa.testmo.net/repositories/1?group_id=28&case_id={id}";
+
+                    Process.Start(new ProcessStartInfo
                     {
-                        Process.Start(new ProcessStartInfo
-                        {
-                            FileName = kvp.Value,
-                            UseShellExecute = true
-                        });
-                        break;
-                    }
+                        FileName = url,
+                        UseShellExecute = true
+                    });
+                    return;
+                }
+
+                // Handle other fixed attributes
+                if (text.Contains("[Obsolete]"))
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "https://learn.microsoft.com/dotnet/csharp/language-reference/attributes/obsolete",
+                        UseShellExecute = true
+                    });
+                }
+                else if (text.Contains("[ApiEndpoint]"))
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "https://docs.myapi.com",
+                        UseShellExecute = true
+                    });
                 }
             }
 
